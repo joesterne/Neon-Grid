@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+  
+  --color-bg-deep: #020205;
+  --color-neon-blue: #00d2ff;
+  --color-neon-orange: #ff8c00;
+  --color-neon-magenta: #ff00ff;
+  --color-grid-line: rgba(0, 210, 255, 0.15);
+  --color-glass: rgba(0, 20, 40, 0.6);
+}
+
+@layer base {
+  body {
+    @apply bg-bg-deep text-white overflow-hidden antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+.grid-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  perspective: 500px;
+  z-index: 1;
+}
+
+.grid-floor {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background-image: 
+    linear-gradient(rgba(0, 210, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 210, 255, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: rotateX(60deg);
+  z-index: 0;
+}
+
+.scanlines {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+  background-size: 100% 4px, 3px 100%;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.glass-panel {
+  background: var(--color-glass);
+  border: 1px solid var(--color-grid-line);
+  backdrop-filter: blur(10px);
+}
+
+.menu-item-strike {
+  @apply relative w-full px-4 py-3 bg-white/5 border-r-2 border-transparent cursor-pointer font-sans text-xs uppercase tracking-[2px] transition-all;
+}
+
+.menu-item-strike:hover {
+  @apply bg-neon-blue/10 border-neon-blue pr-6;
+}
+
+.menu-item-strike.active {
+  @apply border-neon-blue bg-neon-blue/5;
+}
+
+.neon-text-blue {
+  color: var(--color-neon-blue);
+  text-shadow: 0 0 10px var(--color-neon-blue);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 210, 255, 0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.3);
+  border-radius: 10px;
+}
+

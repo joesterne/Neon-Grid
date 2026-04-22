@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (auth.uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (optional)
+    //   - wins: number (required)
+    //   - maxWins: number (optional)
+    //   - fastestGame: number (optional)
+    //   - longestSurvivalTime: number (optional)
+    //   - totalGames: number (optional)
+    //
+    // Collection: rooms
+    // Document ID: uuid
+    // Fields:
+    //   - status: string (waiting, playing, finished)
+    //   - players: map (uid: { x, y, dx, dy, color, isAlive, trail })
+    //   - arenaId: string
+    //   - createdAt: timestamp
+    //
+    // Collection: arenas
+    // Document ID: uuid
+    // Fields:
+    //   - name: string
+    //   - creatorId: string
+    //   - layout: list (obstacles)
+    //   - isPublic: bool
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'wins']) &&
+             data.uid is string &&
+             data.wins is number &&
+             data.wins >= 0 &&
+             (!('maxWins' in data) || (data.maxWins is number && data.maxWins >= 0)) &&
+             (!('fastestGame' in data) || (data.fastestGame is number && data.fastestGame >= 0)) &&
+             (!('longestSurvivalTime' in data) || (data.longestSurvivalTime is number && data.longestSurvivalTime >= 0));
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['status', 'players', 'arenaId']) &&
+             data.status in ['waiting', 'playing', 'finished'] &&
+             data.players is map &&
+             data.arenaId is string &&
+             (!('obstacles' in data) || data.obstacles is list);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+              (request.auth.token.email == "Jsterne1@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRoom(request.resource.data);
+      allow update: if isAuthenticated() && isValidRoom(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    function isValidArena(data) {
+      return data.keys().hasAll(['name', 'creatorId', 'layout', 'isPublic']) &&
+             data.name is string &&
+             data.creatorId is string &&
+             data.layout is list &&
+             data.isPublic is bool;
+    }
+
+    match /arenas/{arenaId} {
+      allow read: if resource.data.isPublic == true || isOwner(resource.data.creatorId);
+      allow create: if isAuthenticated() && isValidArena(request.resource.data);
+      allow update, delete: if isOwner(resource.data.creatorId) || isAdmin();
+    }
+  }
+}

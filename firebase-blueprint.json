@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with game stats.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "wins": { "type": "number" },
+        "maxWins": { "type": "number", "description": "Highest wins streak or max wins in a session" },
+        "fastestGame": { "type": "number", "description": "Shortest time to win a game in seconds" },
+        "longestSurvivalTime": { "type": "number", "description": "Longest time stayed alive in a game in seconds" },
+        "totalGames": { "type": "number" },
+        "achievements": { "type": "array" }
+      },
+      "required": ["uid", "wins"]
+    },
+    "GameRoom": {
+      "title": "GameRoom",
+      "description": "A multiplayer game session.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished"] },
+        "players": { "type": "object" },
+        "arenaId": { "type": "string" },
+        "obstacles": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "winner": { "type": "string" }
+      },
+      "required": ["status", "players", "createdAt"]
+    },
+    "Arena": {
+      "title": "Arena",
+      "description": "A custom arena layout.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "layout": { "type": "array" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["name", "creatorId", "layout"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User storage"
+    },
+    "/rooms/{roomId}": {
+      "schema": "GameRoom",
+      "description": "Multiplayer rooms"
+    },
+    "/arenas/{arenaId}": {
+      "schema": "Arena",
+      "description": "Custom arena storage"
+    }
+  }
+}
