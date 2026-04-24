@@ -188,7 +188,8 @@ const GameArena: React.FC<Props> = ({ roomId, onQuit }) => {
               if (data.arenaId !== 'default') {
                 const arenaDoc = await getDoc(doc(db, 'arenas', data.arenaId));
                 if (arenaDoc.exists()) {
-                  arenaLayout = arenaDoc.data().layout || [];
+                  const fullLayout = arenaDoc.data().layout || [];
+                  arenaLayout = fullLayout.filter((o: any) => (o.level || 1) === 1);
                 }
               }
               const roomRef = doc(db, 'rooms', roomId);
@@ -555,23 +556,38 @@ const GameArena: React.FC<Props> = ({ roomId, onQuit }) => {
           ref={stageRef}
         >
           <Layer>
+            {/* Ambient Background Glow */}
+            <Rect 
+                x={0} 
+                y={0} 
+                width={CANVAS_SIZE} 
+                height={CANVAS_SIZE} 
+                fill="black" 
+                opacity={0.1}
+                shadowColor="rgba(0, 210, 255, 0.2)"
+                shadowBlur={30 + 15 * Math.sin(glowPulse * 8)}
+            />
+
             {/* Grid */}
-            {Array.from({ length: 41 }).map((_, i) => (
-              <React.Fragment key={i}>
+            {Array.from({ length: 41 }).map((_, i) => {
+              const lineOpacity = 0.1 + (Math.sin(i * 0.2 + glowPulse * 4) * 0.1 + 0.1);
+              return (
+               <React.Fragment key={i}>
                 <Line
                   points={[i * GRID_SIZE, 0, i * GRID_SIZE, CANVAS_SIZE]}
                   stroke={COLORS.GRID}
                   strokeWidth={1}
-                  opacity={0.3}
+                  opacity={lineOpacity}
                 />
                 <Line
                   points={[0, i * GRID_SIZE, CANVAS_SIZE, i * GRID_SIZE]}
                   stroke={COLORS.GRID}
                   strokeWidth={1}
-                  opacity={0.3}
+                  opacity={lineOpacity}
                 />
-              </React.Fragment>
-            ))}
+               </React.Fragment>
+              );
+            })}
 
             {/* Arena Obstacles */}
             {room.obstacles?.map((o, i) => (

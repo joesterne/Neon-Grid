@@ -21,12 +21,27 @@ const AppContent = () => {
   const [view, setView] = useState<'menu' | 'lobby' | 'game' | 'editor' | 'story' | 'leaderboard' | 'fps' | 'tutorial'>('menu');
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [quickLaunchMode, setQuickLaunchMode] = useState<'story' | 'lobby' | 'fps' | 'tutorial'>('tutorial');
+  const [coreIntegrity, setCoreIntegrity] = useState(98.2);
+  const [isTurboActive, setIsTurboActive] = useState(true);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCoreIntegrity((prev) => {
+        // Randomly fluctuate between 85.0 and 99.9
+        const change = (Math.random() - 0.5) * 1.5;
+        const next = prev + change;
+        return Math.max(85.0, Math.min(99.9, next));
+      });
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const login = async () => {
     try {
@@ -255,7 +270,7 @@ const AppContent = () => {
               <div className="flex gap-6 items-start">
                 <div className="glass-panel px-6 py-3 text-right">
                   <div className="text-[10px] opacity-50 uppercase mb-1 tracking-wider text-neon-blue drop-shadow-[0_0_10px_rgba(0,210,255,0.6)]">Core Integrity</div>
-                  <div className="font-mono text-2xl neon-text-blue drop-shadow-[0_0_10px_rgba(0,210,255,0.6)]">98.2%</div>
+                  <div className="font-mono text-2xl neon-text-blue drop-shadow-[0_0_10px_rgba(0,210,255,0.6)]">{coreIntegrity.toFixed(1)}%</div>
                 </div>
                 <button 
                   onClick={() => signOut(auth)}
@@ -278,7 +293,12 @@ const AppContent = () => {
 
             {/* Power-ups HUD (Bottom Right) */}
             <div className="absolute bottom-8 right-8 flex gap-3 z-20">
-              <PowerUpIcon active label="TURBO" value="READY" />
+              <PowerUpIcon 
+                active={isTurboActive} 
+                label="TURBO" 
+                value={isTurboActive ? "READY" : "OFF"} 
+                onClick={() => setIsTurboActive(!isTurboActive)} 
+              />
               <PowerUpIcon label="PHASE" value="0%" />
               <PowerUpIcon label="DISC" value="LOCKED" />
             </div>
@@ -407,11 +427,20 @@ const NavButton = ({ active, label, onClick }: { active: boolean; label: string;
   </button>
 );
 
-const PowerUpIcon = ({ active, label, value }: { active?: boolean; label: string; value: string }) => (
-  <div className={`w-14 h-14 border flex flex-col items-center justify-center text-[8px] font-mono leading-tight tracking-tighter glass-panel text-center ${active ? 'border-neon-magenta text-neon-magenta shadow-[0_0_10px_rgba(255,0,255,0.3)]' : 'border-white/10 text-white/40'}`}>
+const PowerUpIcon = ({ active, label, value, onClick }: { active?: boolean; label: string; value: string; onClick?: () => void }) => (
+  <button 
+    onClick={onClick}
+    className={`w-14 h-14 border flex flex-col items-center justify-center text-[8px] font-mono leading-tight tracking-tighter glass-panel text-center transition-all ${
+      onClick ? 'cursor-pointer hover:bg-white/5' : 'cursor-default'
+    } ${
+      active 
+        ? 'border-neon-magenta text-neon-magenta shadow-[0_0_10px_rgba(255,0,255,0.3)]' 
+        : 'border-white/10 text-white/40'
+    }`}
+  >
     <div className="font-bold">{label}</div>
     <div className="opacity-70">{value}</div>
-  </div>
+  </button>
 );
 
 export default function App() {

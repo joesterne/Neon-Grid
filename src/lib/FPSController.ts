@@ -5,6 +5,7 @@ export interface WeaponDef {
   id: string;
   name: string;
   maxAmmo: number;
+  maxReserve: number;
   color: number;
   speed: number;
   fireRate: number; // minimum delay between shots in ms
@@ -16,16 +17,17 @@ export interface WeaponDef {
 }
 
 export const WEAPONS: WeaponDef[] = [
-  { id: 'ar', name: 'Auto Rifle', maxAmmo: 30, color: 0x00ffff, speed: 2.0, fireRate: 150, reloadTime: 1500, automatic: true, size: 0.15, explosionRadius: 0, gravity: 0 },
-  { id: 'smg', name: 'Submachine Gun', maxAmmo: 50, color: 0xffff00, speed: 2.5, fireRate: 80, reloadTime: 1200, automatic: true, size: 0.1, explosionRadius: 0, gravity: 0 },
-  { id: 'rocket', name: 'Rocket Launcher', maxAmmo: 5, color: 0xff0000, speed: 1.0, fireRate: 1000, reloadTime: 2500, automatic: false, size: 0.3, explosionRadius: 5, gravity: 0 },
-  { id: 'grenade', name: 'Grenades', maxAmmo: 4, color: 0x00ff00, speed: 0.6, fireRate: 800, reloadTime: 2000, automatic: false, size: 0.2, explosionRadius: 8, gravity: 0.05 },
+  { id: 'ar', name: 'Auto Rifle', maxAmmo: 30, maxReserve: 120, color: 0x00ffff, speed: 2.0, fireRate: 150, reloadTime: 1500, automatic: true, size: 0.15, explosionRadius: 0, gravity: 0 },
+  { id: 'smg', name: 'Submachine Gun', maxAmmo: 50, maxReserve: 200, color: 0xffff00, speed: 2.5, fireRate: 80, reloadTime: 1200, automatic: true, size: 0.1, explosionRadius: 0, gravity: 0 },
+  { id: 'rocket', name: 'Rocket Launcher', maxAmmo: 5, maxReserve: 15, color: 0xff0000, speed: 1.0, fireRate: 1000, reloadTime: 2500, automatic: false, size: 0.3, explosionRadius: 5, gravity: 0 },
+  { id: 'grenade', name: 'Grenades', maxAmmo: 4, maxReserve: 12, color: 0x00ff00, speed: 0.6, fireRate: 800, reloadTime: 2000, automatic: false, size: 0.2, explosionRadius: 8, gravity: 0.05 },
 ];
 
 export interface FPSStats {
   score: number;
   ammo: number;
   maxAmmo: number;
+  reserve: number;
   isLocked: boolean;
   isReloading: boolean;
   activeWeapon: number;
@@ -34,7 +36,8 @@ export interface FPSStats {
 
 interface Pickup {
   mesh: THREE.Mesh;
-  weaponIndex: number;
+  type: 'weapon' | 'ammo';
+  weaponIndex?: number;
 }
 
 export class FPSController {
@@ -54,6 +57,7 @@ export class FPSController {
   private keys: Record<string, boolean> = {};
   private activeWeapon = 0;
   private weaponAmmo = WEAPONS.map(w => w.maxAmmo);
+  private weaponReserve = WEAPONS.map(w => w.maxReserve);
   private weaponUnlocked = [true, false, false, false];
   private score = 0;
   private isLocked = false;
@@ -197,8 +201,31 @@ export class FPSController {
        if (i === 3) mesh.position.set(50, 3.5, -30); // Grenades right walkway
        
        this.scene.add(mesh);
-       this.pickups.push({ mesh, weaponIndex: i });
+       this.pickups.push({ mesh, type: 'weapon', weaponIndex: i });
     }
+
+    // Add some initial ammo crates
+    this.spawnAmmoPickup(new THREE.Vector3(20, 1, 20));
+    this.spawnAmmoPickup(new THREE.Vector3(-20, 1, -20));
+    this.spawnAmmoPickup(new THREE.Vector3(0, 4, -30)); // Inside L1
+  }
+
+  private spawnAmmoPickup(position: THREE.Vector3) {
+    const geom = new THREE.BoxGeometry(0.6, 0.4, 0.6);
+    const mat = new THREE.MeshPhongMaterial({
+      color: 0xffff00,
+      emissive: 0xffff00,
+      emissiveIntensity: 0.5,
+      wireframe: true
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.copy(position);
+    // Ensure it's on the ground if spawned from a high target
+    if (position.y > 1) {
+       // Optional: could raycast down to find floor, but for now just let it float or drop
+    }
+    this.scene.add(mesh);
+    this.pickups.push({ mesh, type: 'ammo' });
   }
 
   private spawnTarget() {
@@ -218,7 +245,10 @@ export class FPSController {
     target.userData = { 
       oscillation: Math.random() * Math.PI * 2, 
       speed: 1 + Math.random() * 2, 
-      hit: false 
+      hit: false,
+      state: 'idle',
+      avoidDelay: 0,
+      turnDir: Math.random() > 0.5 ? 1 : -1
     };
     this.scene.add(target);
     this.targets.push(target);
@@ -230,6 +260,7 @@ export class FPSController {
     this.container.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('mouseup', this.handleMouseUp);
     window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('wheel', this.handleWheel);
     document.addEventListener('pointerlockchange', this.handleLockChange);
     window.addEventListener('resize', this.handleResize);
   }
@@ -240,6 +271,7 @@ export class FPSController {
     this.container.removeEventListener('mousedown', this.handleMouseDown);
     window.removeEventListener('mouseup', this.handleMouseUp);
     window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('wheel', this.handleWheel);
     document.removeEventListener('pointerlockchange', this.handleLockChange);
     window.removeEventListener('resize', this.handleResize);
   }
@@ -299,6 +331,29 @@ export class FPSController {
       this.camera.rotation.y -= e.movementX * 0.002;
       this.camera.rotation.x -= e.movementY * 0.002;
       this.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotation.x));
+    }
+  };
+
+  private handleWheel = (e: WheelEvent) => {
+    if (!this.isLocked || this.isReloading) return;
+    
+    let nextIdx = this.activeWeapon;
+    const direction = Math.sign(e.deltaY);
+
+    if (direction > 0) {
+      // scroll down -> next weapon
+      do {
+        nextIdx = (nextIdx + 1) % WEAPONS.length;
+      } while (!this.weaponUnlocked[nextIdx] && nextIdx !== this.activeWeapon);
+    } else if (direction < 0) {
+      // scroll up -> previous weapon 
+      do {
+        nextIdx = (nextIdx - 1 + WEAPONS.length) % WEAPONS.length;
+      } while (!this.weaponUnlocked[nextIdx] && nextIdx !== this.activeWeapon);
+    }
+
+    if (nextIdx !== this.activeWeapon) {
+       this.switchWeapon(nextIdx);
     }
   };
 
@@ -381,6 +436,7 @@ export class FPSController {
       score: this.score,
       ammo: this.weaponAmmo[this.activeWeapon],
       maxAmmo: WEAPONS[this.activeWeapon].maxAmmo,
+      reserve: this.weaponReserve[this.activeWeapon],
       isLocked: this.isLocked,
       isReloading: this.isReloading,
       activeWeapon: this.activeWeapon,
@@ -389,19 +445,25 @@ export class FPSController {
   }
 
   private reload() {
+    const wIndex = this.activeWeapon;
+    const weapon = WEAPONS[wIndex];
+    
+    if (this.weaponAmmo[wIndex] === weapon.maxAmmo) return;
+    if (this.weaponReserve[wIndex] <= 0) return;
+
     this.isReloading = true;
     this.updateStats();
     
-    const wIndex = this.activeWeapon;
     setTimeout(() => {
-      if (this.activeWeapon === wIndex) {
-         this.weaponAmmo[wIndex] = WEAPONS[wIndex].maxAmmo;
-      } else {
-         this.weaponAmmo[wIndex] = WEAPONS[wIndex].maxAmmo; 
-      }
+      const needed = weapon.maxAmmo - this.weaponAmmo[wIndex];
+      const toTransfer = Math.min(needed, this.weaponReserve[wIndex]);
+      
+      this.weaponAmmo[wIndex] += toTransfer;
+      this.weaponReserve[wIndex] -= toTransfer;
+      
       this.isReloading = false;
       this.updateStats();
-    }, WEAPONS[wIndex].reloadTime);
+    }, weapon.reloadTime);
   }
 
   private getOcclusionAt(position: THREE.Vector3) {
@@ -424,6 +486,11 @@ export class FPSController {
     const occlusion = this.getOcclusionAt(target.position);
     sounds.playExplosion(occlusion);
     sounds.playSuccess(occlusion);
+    
+    // Random ammo drop chance
+    if (Math.random() < 0.3) {
+      this.spawnAmmoPickup(target.position.clone());
+    }
     
     target.scale.set(1.5, 1.5, 1.5);
     if (target.material instanceof THREE.MeshPhongMaterial) {
@@ -538,22 +605,106 @@ export class FPSController {
         pickup.mesh.rotation.x += delta * 0.5;
         
         if (this.camera.position.distanceTo(pickup.mesh.position) < 2.5) {
-          this.weaponUnlocked[pickup.weaponIndex] = true;
+          if (pickup.type === 'weapon' && pickup.weaponIndex !== undefined) {
+            this.weaponUnlocked[pickup.weaponIndex] = true;
+            this.switchWeapon(pickup.weaponIndex);
+          } else if (pickup.type === 'ammo') {
+            // Partial refill for all unlocked weapons' reserves
+            for (let j = 0; j < WEAPONS.length; j++) {
+              if (this.weaponUnlocked[j]) {
+                this.weaponReserve[j] = Math.min(WEAPONS[j].maxReserve, this.weaponReserve[j] + Math.floor(WEAPONS[j].maxReserve * 0.4));
+              }
+            }
+            this.updateStats();
+          }
+          
           this.scene.remove(pickup.mesh);
           this.pickups.splice(i, 1);
-          this.switchWeapon(pickup.weaponIndex);
           sounds.playSuccess(0);
         }
       }
     }
 
-    // Handles targets hovering
+    // AI / Pathfinding for targets
     this.targets.forEach(t => {
       if (!t.userData.hit) {
         t.userData.oscillation += delta * t.userData.speed;
+        
+        let moveSpeed = t.userData.speed * 2.5;
+        const dirToPlayer = new THREE.Vector3().subVectors(this.camera.position, t.position);
+        const distToPlayer = dirToPlayer.length();
+        
+        if (distToPlayer < 80) {
+            dirToPlayer.normalize();
+            // Check line of sight
+            const raycaster = new THREE.Raycaster(t.position, dirToPlayer, 0, distToPlayer);
+            const hits = raycaster.intersectObject(this.obstacles, true);
+            
+            if (hits.length === 0) {
+                // Line of sight established, pursue
+                t.userData.state = 'pursuit';
+            } else if (t.userData.state === 'pursuit') {
+                t.userData.state = 'idle';
+            }
+        } else {
+            t.userData.state = 'idle';
+        }
+
+        if (t.userData.avoidDelay > 0) t.userData.avoidDelay -= delta;
+
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(t.quaternion);
+        
+        if (t.userData.state === 'pursuit') {
+            const targetPos = this.camera.position.clone();
+            targetPos.y = t.position.y; // Keep level
+            const currentRot = t.quaternion.clone();
+            t.lookAt(targetPos);
+            const targetRot = t.quaternion.clone();
+            t.quaternion.copy(currentRot);
+            t.quaternion.slerp(targetRot, delta * 3);
+            
+            // Avoid obstacles check forward
+            if (t.userData.avoidDelay <= 0) {
+                const avoidRay = new THREE.Raycaster(t.position, forward, 0, 6);
+                const avoidHits = avoidRay.intersectObject(this.obstacles, true);
+                if (avoidHits.length > 0) {
+                    t.userData.state = 'avoiding';
+                    t.userData.avoidDelay = 1.5; // Avoid for 1.5 secs
+                    t.userData.turnDir = Math.random() > 0.5 ? 1 : -1;
+                }
+            }
+        }
+        
+        if (t.userData.state === 'avoiding') {
+            t.rotateY(delta * 2 * t.userData.turnDir);
+        } else if (t.userData.state === 'idle') {
+            t.rotateY(delta * 0.5 * t.userData.turnDir);
+            moveSpeed = t.userData.speed * 1.0;
+            
+            if (Math.random() < 0.005) {
+                t.userData.turnDir = Math.random() > 0.5 ? 1 : -1;
+            }
+            
+            if (t.userData.avoidDelay <= 0) {
+                const avoidRay = new THREE.Raycaster(t.position, forward, 0, 5);
+                const avoidHits = avoidRay.intersectObject(this.obstacles, true);
+                if (avoidHits.length > 0) {
+                    t.userData.avoidDelay = 1.0;
+                    t.userData.turnDir = -t.userData.turnDir;
+                }
+            }
+        }
+        
+        // Apply movement forward
+        forward.set(0, 0, 1).applyQuaternion(t.quaternion);
+        // Avoid bumping into player too closely
+        if (distToPlayer > 3 || t.userData.state !== 'pursuit') {
+            t.position.add(forward.multiplyScalar(moveSpeed * delta));
+        }
+        
+        // Visuals
         t.position.y += Math.sin(t.userData.oscillation) * 0.05;
-        t.rotation.y += delta * 2;
-        t.rotation.x += delta;
+        t.rotation.z += delta * 2; // spin as a visual effect
       }
     });
 

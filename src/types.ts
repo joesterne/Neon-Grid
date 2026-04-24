@@ -27,6 +27,7 @@ export interface Obstacle {
   y: number;
   width: number;
   height: number;
+  level?: number;
 }
 
 export interface PowerUp {

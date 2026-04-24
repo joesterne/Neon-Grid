@@ -14,6 +14,7 @@ const FPSMode: React.FC<Props> = ({ onBack }) => {
     score: 0, 
     ammo: 30, 
     maxAmmo: 30,
+    reserve: 120,
     isLocked: false, 
     isReloading: false,
     activeWeapon: 0,
@@ -71,7 +72,7 @@ const FPSMode: React.FC<Props> = ({ onBack }) => {
              <div>
                 <div className="text-[10px] uppercase opacity-50 font-mono">Active Array: {WEAPONS[stats.activeWeapon]?.name || 'Discharge'}</div>
                 <div className={`font-mono tracking-widest uppercase ${stats.isReloading ? 'text-neon-magenta animate-pulse' : stats.ammo > 0 ? 'text-white' : 'text-red-500'}`}>
-                  {stats.isReloading ? 'RECYCLING...' : stats.ammo > 0 ? `${stats.ammo.toString().padStart(3, '0')} / ${stats.maxAmmo.toString().padStart(3, '0')}` : 'Depleted'}
+                  {stats.isReloading ? 'RECYCLING...' : (stats.ammo > 0 || stats.reserve > 0) ? `${stats.ammo.toString().padStart(3, '0')} / ${stats.reserve.toString().padStart(3, '0')}` : 'Depleted'}
                 </div>
              </div>
           </div>
