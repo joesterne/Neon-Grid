@@ -365,16 +365,18 @@ const LocalDemo: React.FC<Props> = ({ obstacles, onBack }) => {
             )}
           </Layer>
         </Stage>
+      </div>
 
-        <AnimatePresence>
-          {status === 'finished' && (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-8 text-center z-50"
-            >
-              <div className="text-4xl font-black mb-4 tracking-tighter text-neon-magenta italic">SIMULATION_ABORTED</div>
-              <div className="font-mono text-white/60 mb-8 uppercase tracking-widest text-xs">Collision detected in primary logic path.</div>
-              <div className="flex gap-4">
+      <AnimatePresence>
+        {status === 'finished' && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-8 text-center z-50 backdrop-blur-sm"
+          >
+            <div className="max-w-xl w-full glass-panel p-12 flex flex-col items-center">
+              <div className="text-4xl sm:text-5xl font-black mb-4 tracking-tighter text-neon-magenta italic">SIMULATION_ABORTED</div>
+              <div className="font-mono text-white/60 mb-10 uppercase tracking-widest text-sm text-center">Collision detected in primary logic path. <br/><span className="text-neon-cyan opacity-80 mt-2 block">Structural adjustments required.</span></div>
+              <div className="flex flex-wrap items-center justify-center gap-4">
                 <button 
                   onClick={restartDemo}
                   className="px-8 py-3 bg-neon-blue text-black font-black italic tracking-widest hover:bg-white transition-all uppercase flex items-center gap-2"
@@ -388,10 +390,10 @@ const LocalDemo: React.FC<Props> = ({ obstacles, onBack }) => {
                   EXIT_WORKBENCH
                 </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mt-8 flex flex-col items-center gap-4">
         <div className="font-mono text-[10px] text-white/40 uppercase tracking-[4px]">Simulation_Controls: WASD // ARROWS</div>

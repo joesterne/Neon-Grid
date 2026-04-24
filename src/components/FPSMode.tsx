@@ -1,15 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Crosshair, Shield, Zap, ChevronLeft } from 'lucide-react';
+import { Crosshair, Shield, Zap, ChevronLeft, Loader2 } from 'lucide-react';
 import { FPSController, FPSStats, WEAPONS } from '../lib/FPSController';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface Props {
   onBack: () => void;
+  initialObstacles?: any[];
+  arenaId?: string;
 }
 
-const FPSMode: React.FC<Props> = ({ onBack }) => {
+const FPSMode: React.FC<Props> = ({ onBack, initialObstacles, arenaId }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<FPSController | null>(null);
+  const [loadingArena, setLoadingArena] = useState(!!arenaId);
+  const [loadedObstacles, setLoadedObstacles] = useState<any[] | undefined>(initialObstacles);
   const [stats, setStats] = useState<FPSStats>({ 
     score: 0, 
     ammo: 30, 
@@ -22,21 +28,54 @@ const FPSMode: React.FC<Props> = ({ onBack }) => {
   });
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const fetchArena = async () => {
+      if (arenaId) {
+        setLoadingArena(true);
+        try {
+          const docRef = doc(db, 'arenas', arenaId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().layout) {
+            setLoadedObstacles(docSnap.data().layout);
+          } else {
+            console.error("Arena not found");
+          }
+        } catch (e) {
+          console.error("Error fetching arena:", e);
+        } finally {
+          setLoadingArena(false);
+        }
+      } else {
+        setLoadedObstacles(initialObstacles);
+      }
+    };
+    fetchArena();
+  }, [arenaId, initialObstacles]);
+
+  useEffect(() => {
+    if (!containerRef.current || loadingArena) return;
     
     const controller = new FPSController(containerRef.current, (newStats) => {
       setStats(newStats);
-    });
+    }, loadedObstacles);
     
     controllerRef.current = controller;
 
     return () => {
       controller.dispose();
     };
-  }, []);
+  }, [loadedObstacles, loadingArena]);
 
   return (
     <div className="absolute inset-0 bg-black overflow-hidden select-none">
+      {loadingArena ? (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-12 h-12 text-neon-blue animate-spin" />
+            <div className="font-mono text-neon-blue uppercase tracking-widest text-sm animate-pulse">Loading Arena Map Data...</div>
+          </div>
+        </div>
+      ) : null}
+      
       <div ref={containerRef} className="w-full h-full cursor-crosshair" />
 
       {/* Crosshair */}

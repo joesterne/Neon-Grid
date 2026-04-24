@@ -22,6 +22,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { GRID_SIZE, CANVAS_SIZE, COLORS } from '../constants';
 import { Obstacle } from '../types';
 import LocalDemo from './LocalDemo';
+import FPSMode from './FPSMode';
 
 interface Props {
   onBack: () => void;
@@ -43,6 +44,7 @@ const ArenaEditor: React.FC<Props> = ({ onBack }) => {
   const [dragStartGrid, setDragStartGrid] = useState<{ x: number; y: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [isFPSDemo, setIsFPSDemo] = useState(false);
   const [pulse, setPulse] = useState(1);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [scale, setScale] = useState(1);
@@ -348,6 +350,19 @@ const ArenaEditor: React.FC<Props> = ({ onBack }) => {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isFPSDemo && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            className="absolute inset-0 z-[100] bg-black"
+          >
+            <FPSMode onBack={() => setIsFPSDemo(false)} initialObstacles={obstacles} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* HUD Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
@@ -415,24 +430,34 @@ const ArenaEditor: React.FC<Props> = ({ onBack }) => {
                 onClick={() => setTool('place')}
                 icon={<Box size={16} />}
                 label="CONSTRUCT"
+                tooltip="Place obstacles and build the arena layout"
               />
               <ToolButton 
                 active={tool === 'erase'} 
                 onClick={() => setTool('erase')}
                 icon={<Eraser size={16} />}
                 label="DE-RES"
+                tooltip="Remove obstacles from the grid"
               />
               <ToolButton 
                 active={tool === 'select'} 
                 onClick={() => setTool('select')}
                 icon={<MousePointer2 size={16} />}
                 label="SELECT"
+                tooltip="Select and modify existing obstacles"
               />
               <ToolButton 
                 active={false} 
                 onClick={() => setIsDemo(true)}
                 icon={<Play size={16} />}
                 label="TEST_SIM"
+                highlight
+              />
+              <ToolButton 
+                active={false} 
+                onClick={() => setIsFPSDemo(true)}
+                icon={<Eye size={16} />}
+                label="FPS_TEST"
                 highlight
               />
               <ToolButton 
@@ -721,12 +746,13 @@ interface ToolBtnProps {
   label: string;
   danger?: boolean;
   highlight?: boolean;
+  tooltip?: string;
 }
 
-const ToolButton = ({ active, onClick, icon, label, danger, highlight }: ToolBtnProps) => (
+const ToolButton = ({ active, onClick, icon, label, danger, highlight, tooltip }: ToolBtnProps) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center justify-center p-3 border transition-all gap-2 group ${
+    className={`relative flex flex-col items-center justify-center p-3 border transition-all gap-2 group ${
       active 
         ? 'bg-neon-blue border-neon-blue text-black font-bold' 
         : highlight
@@ -738,6 +764,11 @@ const ToolButton = ({ active, onClick, icon, label, danger, highlight }: ToolBtn
   >
     {icon}
     <span className="text-[8px] tracking-[1px] uppercase">{label}</span>
+    {tooltip && (
+      <div className="absolute top-[-10px] left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] bg-black/90 border border-neon-blue/40 text-neon-blue text-[10px] p-2 w-32 whitespace-normal text-center leading-relaxed tracking-widest backdrop-blur-md">
+        {tooltip}
+      </div>
+    )}
   </button>
 );
 

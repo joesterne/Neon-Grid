@@ -15,11 +15,13 @@ import FPSMode from './components/FPSMode';
 import TutorialMode from './components/TutorialMode';
 import AchievementsDisplay from './components/AchievementsDisplay';
 import LocalDemo from './components/LocalDemo';
+import SavedArenas from './components/SavedArenas';
 
 const AppContent = () => {
   const { user, profile, loading, isConfigured, isBypassed, bypassAuth } = useAuth();
-  const [view, setView] = useState<'menu' | 'lobby' | 'game' | 'editor' | 'story' | 'leaderboard' | 'fps' | 'tutorial'>('menu');
+  const [view, setView] = useState<'menu' | 'lobby' | 'game' | 'editor' | 'story' | 'leaderboard' | 'fps' | 'tutorial' | 'saved'>('menu');
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [sharedArenaId, setSharedArenaId] = useState<string | null>(null);
   const [quickLaunchMode, setQuickLaunchMode] = useState<'story' | 'lobby' | 'fps' | 'tutorial'>('tutorial');
   const [coreIntegrity, setCoreIntegrity] = useState(98.2);
   const [isTurboActive, setIsTurboActive] = useState(true);
@@ -31,6 +33,13 @@ const AppContent = () => {
   const [isSignUp, setIsSignUp] = useState(false);
 
   React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const arenaParam = params.get('arena');
+    if (arenaParam) {
+      setSharedArenaId(arenaParam);
+      setQuickLaunchMode('fps');
+    }
+
     const interval = setInterval(() => {
       setCoreIntegrity((prev) => {
         // Randomly fluctuate between 85.0 and 99.9
@@ -288,6 +297,7 @@ const AppContent = () => {
               <NavButton active={view === 'lobby'} label="Arena Battle" onClick={() => setView('lobby')} />
               <NavButton active={view === 'fps'} label="Grid Recon" onClick={() => setView('fps')} />
               <NavButton active={view === 'editor'} label="Grid Editor" onClick={() => setView('editor')} />
+              <NavButton active={view === 'saved'} label="Archived Arrays" onClick={() => setView('saved')} />
               <NavButton active={view === 'leaderboard'} label="Data Bank" onClick={() => setView('leaderboard')} />
             </nav>
 
@@ -408,8 +418,9 @@ const AppContent = () => {
                     {view === 'editor' && <ArenaEditor onBack={() => setView('menu')} />}
                     {view === 'story' && <StoryMode onBack={() => setView('menu')} />}
                     {view === 'leaderboard' && <Leaderboard onBack={() => setView('menu')} />}
-                    {view === 'fps' && <FPSMode onBack={() => setView('menu')} />}
+                    {view === 'fps' && <FPSMode onBack={() => setView('menu')} initialObstacles={undefined} arenaId={sharedArenaId || undefined} />}
                     {view === 'tutorial' && <TutorialMode onBack={() => setView('menu')} />}
+                    {view === 'saved' && <SavedArenas onBack={() => setView('menu')} onPlayArena={(id) => { setSharedArenaId(id); setView('fps'); }} />}
                   </motion.div>
                 </AnimatePresence>
               </div>

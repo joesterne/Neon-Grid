@@ -14,13 +14,14 @@ export interface WeaponDef {
   size: number;
   explosionRadius: number;
   gravity: number;
+  damage: number;
 }
 
 export const WEAPONS: WeaponDef[] = [
-  { id: 'ar', name: 'Auto Rifle', maxAmmo: 30, maxReserve: 120, color: 0x00ffff, speed: 2.0, fireRate: 150, reloadTime: 1500, automatic: true, size: 0.15, explosionRadius: 0, gravity: 0 },
-  { id: 'smg', name: 'Submachine Gun', maxAmmo: 50, maxReserve: 200, color: 0xffff00, speed: 2.5, fireRate: 80, reloadTime: 1200, automatic: true, size: 0.1, explosionRadius: 0, gravity: 0 },
-  { id: 'rocket', name: 'Rocket Launcher', maxAmmo: 5, maxReserve: 15, color: 0xff0000, speed: 1.0, fireRate: 1000, reloadTime: 2500, automatic: false, size: 0.3, explosionRadius: 5, gravity: 0 },
-  { id: 'grenade', name: 'Grenades', maxAmmo: 4, maxReserve: 12, color: 0x00ff00, speed: 0.6, fireRate: 800, reloadTime: 2000, automatic: false, size: 0.2, explosionRadius: 8, gravity: 0.05 },
+  { id: 'ar', name: 'Auto Rifle', maxAmmo: 30, maxReserve: 120, color: 0x00ffff, speed: 2.0, fireRate: 150, reloadTime: 1500, automatic: true, size: 0.15, explosionRadius: 0, gravity: 0, damage: 15 },
+  { id: 'smg', name: 'Submachine Gun', maxAmmo: 50, maxReserve: 200, color: 0xffff00, speed: 2.5, fireRate: 80, reloadTime: 1200, automatic: true, size: 0.1, explosionRadius: 0, gravity: 0, damage: 8 },
+  { id: 'rocket', name: 'Rocket Launcher', maxAmmo: 5, maxReserve: 15, color: 0xff0000, speed: 1.0, fireRate: 1000, reloadTime: 2500, automatic: false, size: 0.3, explosionRadius: 5, gravity: 0, damage: 100 },
+  { id: 'grenade', name: 'Grenades', maxAmmo: 4, maxReserve: 12, color: 0x00ff00, speed: 0.6, fireRate: 800, reloadTime: 2000, automatic: false, size: 0.2, explosionRadius: 8, gravity: 0.05, damage: 80 },
 ];
 
 export interface FPSStats {
@@ -72,7 +73,7 @@ export class FPSController {
   private animateId: number | null = null;
   private onStatsUpdate: (stats: FPSStats) => void;
 
-  constructor(container: HTMLElement, onStatsUpdate: (stats: FPSStats) => void) {
+  constructor(container: HTMLElement, onStatsUpdate: (stats: FPSStats) => void, customLayout?: any[]) {
     this.container = container;
     this.onStatsUpdate = onStatsUpdate;
 
@@ -105,14 +106,41 @@ export class FPSController {
     this.scene.add(gridHelper);
 
     this.scene.add(this.obstacles);
-    this.initBuildings();
+    
+    if (customLayout && customLayout.length > 0) {
+      this.initCustomLayout(customLayout);
+    } else {
+      this.initBuildings();
+    }
 
-    for (let i = 0; i < 20; i++) this.spawnTarget();
+    for (let i = 0; i < 20; i++) this.spawnEnemy();
     this.initPickups();
 
     this.bindEvents();
     this.updateStats();
     this.animate();
+  }
+
+  private initCustomLayout(layout: any[]) {
+    // Floor
+    this.createBlock(250, 1, 250, 0, -1, 0, 0, 0, 0, 0x000a11);
+    
+    const scale = 5;
+    layout.forEach(obs => {
+        const wFactor = obs.width || 1;
+        const hFactor = obs.height || 1;
+        const level = obs.level || 1;
+        const h = 5;
+        const yPos = (level - 1) * 5 + 2.5;
+
+        // x and y in layout are 0..40 grid coords
+        // shift so center of grid is at 0,0
+        const realX = (obs.x - 20) * scale + (scale * wFactor) / 2;
+        const realZ = (obs.y - 20) * scale + (scale * hFactor) / 2;
+
+        const color = obs.type === 'wall' ? 0x001122 : 0x440044;
+        this.createBlock(scale * wFactor, h, scale * hFactor, realX, yPos, realZ, 0, 0, 0, color);
+    });
   }
 
   private createBlock(w: number, h: number, d: number, x: number, y: number, z: number, rotX = 0, rotY = 0, rotZ = 0, color = 0x001122) {
@@ -228,28 +256,64 @@ export class FPSController {
     this.pickups.push({ mesh, type: 'ammo' });
   }
 
-  private spawnTarget() {
-    const geom = new THREE.IcosahedronGeometry(1, 0);
+  private spawnEnemy(enemyType?: string) {
+    const types = ['tank', 'recognizer', 'helicopter'];
+    const type = enemyType || types[Math.floor(Math.random() * types.length)];
+    
+    let geom;
+    let color;
+    let health;
+    let baseSpeed;
+    let yResting;
+
+    if (type === 'tank') {
+        geom = new THREE.BoxGeometry(3, 2, 4);
+        color = 0xff3300;
+        health = 150;
+        baseSpeed = 0.5;
+        yResting = 1;
+    } else if (type === 'recognizer') {
+        geom = new THREE.ConeGeometry(1.5, 3, 4);
+        color = 0xff0055;
+        health = 80;
+        baseSpeed = 1.5;
+        yResting = 4;
+    } else { // helicopter
+        geom = new THREE.OctahedronGeometry(1.5, 0); // Diamond shape
+        color = 0x00ffff;
+        health = 30;
+        baseSpeed = 3.5;
+        yResting = 10;
+    }
+
     const mat = new THREE.MeshPhongMaterial({
-      color: 0xff00ff,
-      emissive: 0xff00ff,
+      color: color,
+      emissive: color,
       emissiveIntensity: 0.5,
       wireframe: true
     });
     const target = new THREE.Mesh(geom, mat);
+    
     target.position.set(
       (Math.random() - 0.5) * 160,
-      1 + Math.random() * 15, // Varied height
+      yResting,
       (Math.random() - 0.5) * 160
     );
+
     target.userData = { 
+      type: type,
+      health: health,
+      maxHealth: health,
+      originalColor: color,
       oscillation: Math.random() * Math.PI * 2, 
-      speed: 1 + Math.random() * 2, 
+      speed: baseSpeed, 
       hit: false,
       state: 'idle',
       avoidDelay: 0,
-      turnDir: Math.random() > 0.5 ? 1 : -1
+      turnDir: Math.random() > 0.5 ? 1 : -1,
+      yBase: yResting
     };
+    
     this.scene.add(target);
     this.targets.push(target);
   }
@@ -477,6 +541,28 @@ export class FPSController {
     return Math.min(occluded, 0.95);
   }
 
+  private damageTarget(target: THREE.Mesh, weapon: WeaponDef) {
+    if (target.userData.hit) return;
+    
+    target.userData.health -= weapon.damage;
+    
+    if (target.material instanceof THREE.MeshPhongMaterial) {
+        target.material.color.set(0xffffff);
+        target.material.emissive.set(0xffffff);
+        
+        setTimeout(() => {
+            if (!target.userData.hit && target.parent && target.material instanceof THREE.MeshPhongMaterial) {
+                target.material.color.set(target.userData.originalColor);
+                target.material.emissive.set(target.userData.originalColor);
+            }
+        }, 100);
+    }
+    
+    if (target.userData.health <= 0) {
+        this.destroyTarget(target);
+    }
+  }
+
   private destroyTarget(target: THREE.Mesh) {
     if (target.userData.hit) return;
     target.userData.hit = true;
@@ -494,15 +580,15 @@ export class FPSController {
     
     target.scale.set(1.5, 1.5, 1.5);
     if (target.material instanceof THREE.MeshPhongMaterial) {
-      target.material.color.set(0x00ffff);
-      target.material.emissive.set(0x00ffff);
+      target.material.color.set(0xffffff);
+      target.material.emissive.set(0xffffff);
       target.material.wireframe = false;
     }
     
     setTimeout(() => {
       this.scene.remove(target);
       this.targets = this.targets.filter(x => x !== target);
-      this.spawnTarget();
+      this.spawnEnemy();
     }, 150);
   }
 
@@ -515,12 +601,12 @@ export class FPSController {
         
         this.targets.forEach(target => {
             if (!target.userData.hit && target.position.distanceTo(point) <= weapon.explosionRadius) {
-                this.destroyTarget(target);
+                this.damageTarget(target, weapon);
             }
         });
     } else {
         if (directTarget) {
-            this.destroyTarget(directTarget);
+            this.damageTarget(directTarget, weapon);
         }
     }
     this.removeProjectile(p);
@@ -703,8 +789,15 @@ export class FPSController {
         }
         
         // Visuals
-        t.position.y += Math.sin(t.userData.oscillation) * 0.05;
-        t.rotation.z += delta * 2; // spin as a visual effect
+        if (t.userData.type === 'helicopter') {
+          t.position.y = t.userData.yBase + Math.sin(t.userData.oscillation) * 1.5;
+          t.rotation.y += delta * 4; // fast spin
+        } else if (t.userData.type === 'recognizer') {
+          t.position.y = t.userData.yBase + Math.sin(t.userData.oscillation) * 0.5;
+          t.rotation.z += delta * 2; 
+        } else {
+          t.position.y = t.userData.yBase; // stays grounded
+        }
       }
     });
 
