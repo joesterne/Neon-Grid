@@ -24,7 +24,9 @@ const FPSMode: React.FC<Props> = ({ onBack, initialObstacles, arenaId }) => {
     isLocked: false, 
     isReloading: false,
     activeWeapon: 0,
-    unlockedWeapons: [true, false, false, false]
+    unlockedWeapons: [true, false, false, false],
+    health: 100,
+    maxHealth: 100
   });
 
   useEffect(() => {
@@ -98,9 +100,9 @@ const FPSMode: React.FC<Props> = ({ onBack, initialObstacles, arenaId }) => {
                <Shield className="text-neon-blue" />
              </div>
              <div>
-               <div className="text-[10px] uppercase opacity-50 font-mono">Shield Integrity</div>
+               <div className="text-[10px] uppercase opacity-50 font-mono">Shield Integrity ({Math.max(0, Math.floor(stats.health))} / {stats.maxHealth})</div>
                <div className="h-1 w-32 bg-white/10 mt-1">
-                 <div className="h-full bg-neon-blue w-[85%]" />
+                 <div className="h-full bg-neon-blue transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, (stats.health / stats.maxHealth) * 100))}%` }} />
                </div>
              </div>
           </div>
@@ -139,7 +141,23 @@ const FPSMode: React.FC<Props> = ({ onBack, initialObstacles, arenaId }) => {
 
       {/* Instructions Overlay */}
       <AnimatePresence>
-        {!stats.isLocked && (
+        {stats.health <= 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className="absolute inset-0 bg-red-900/90 backdrop-blur-md flex flex-col items-center justify-center z-[110] text-center p-8"
+          >
+             <h2 className="text-6xl font-black italic uppercase tracking-tighter mb-4 text-white drop-shadow-[0_0_20px_rgba(255,0,0,1)]">PROGRAM DERESOLVED</h2>
+             <p className="font-mono text-xl text-white/80 tracking-widest mb-8">CRITICAL FAILURE IN SECTOR 0xFF</p>
+             <button 
+               onClick={onBack}
+               className="glass-panel px-8 py-4 font-mono text-white hover:text-red-500 transition-colors uppercase tracking-widest"
+             >
+               RETURN TO HUB
+             </button>
+          </motion.div>
+        )}
+        {!stats.isLocked && stats.health > 0 && (
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 

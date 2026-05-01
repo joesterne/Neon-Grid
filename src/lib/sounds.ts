@@ -15,11 +15,18 @@ class SoundManager {
     if (this.ctx) return;
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.3; // Global volume
+    this.masterGain.gain.value = 0.3; // Default
     this.masterGain.connect(this.ctx.destination);
     
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(err => console.warn("AUDIO_SYNC_FAILED: THE GRID IS SILENT.", err));
+    }
+  }
+
+  setVolume(volume: number) {
+    if (!this.masterGain) this.init();
+    if (this.masterGain) {
+      this.masterGain.gain.value = volume;
     }
   }
 

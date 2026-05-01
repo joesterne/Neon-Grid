@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sounds } from './sounds';
+import { getSettings } from './settings';
 
 export interface WeaponDef {
   id: string;
@@ -33,6 +34,8 @@ export interface FPSStats {
   isReloading: boolean;
   activeWeapon: number;
   unlockedWeapons: boolean[];
+  health: number;
+  maxHealth: number;
 }
 
 interface Pickup {
@@ -61,6 +64,8 @@ export class FPSController {
   private weaponReserve = WEAPONS.map(w => w.maxReserve);
   private weaponUnlocked = [true, false, false, false];
   private score = 0;
+  private playerHealth = 100;
+  private maxPlayerHealth = 100;
   private isLocked = false;
   private isReloading = false;
   private isMouseDown = false;
@@ -113,7 +118,9 @@ export class FPSController {
       this.initBuildings();
     }
 
-    for (let i = 0; i < 20; i++) this.spawnEnemy();
+    const settings = getSettings();
+    const enemyCount = Math.floor(20 * settings.difficulty);
+    for (let i = 0; i < enemyCount; i++) this.spawnEnemy();
     this.initPickups();
 
     this.bindEvents();
@@ -286,6 +293,9 @@ export class FPSController {
         yResting = 10;
     }
 
+    const difficulty = getSettings().difficulty;
+    baseSpeed *= difficulty;
+
     const mat = new THREE.MeshPhongMaterial({
       color: color,
       emissive: color,
@@ -364,6 +374,7 @@ export class FPSController {
   private handleKeyUp = (e: KeyboardEvent) => { this.keys[e.code] = false; };
   
   private handleMouseDown = (e: MouseEvent) => {
+    if (this.playerHealth <= 0) return;
     if (e.button !== 0) return; // Only left click
     if (!this.isLocked) {
       this.container.requestPointerLock()?.catch(err => {
@@ -456,14 +467,16 @@ export class FPSController {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     
     projectile.userData = {
-       velocity: dir.multiplyScalar(weapon.speed * (weapon.id === 'grenade' ? 0.3 : 1.0)),
+       velocity: dir.multiplyScalar(weapon.speed * (weapon.id === 'grenade' ? 0.6 : 1.0)),
        weaponIndex: this.activeWeapon,
        gravity: weapon.gravity
     };
     
     // Add an upward arc for grenades automatically
     if (weapon.id === 'grenade') {
-       projectile.userData.velocity.y += 0.3;
+       projectile.userData.velocity.y += 0.8;
+       // Also add a bit of player velocity inheritance
+       projectile.userData.velocity.add(new THREE.Vector3(this.velocity.x * 0.1, 0, this.velocity.z * 0.1));
     }
 
     this.scene.add(projectile);
@@ -504,7 +517,9 @@ export class FPSController {
       isLocked: this.isLocked,
       isReloading: this.isReloading,
       activeWeapon: this.activeWeapon,
-      unlockedWeapons: [...this.weaponUnlocked]
+      unlockedWeapons: [...this.weaponUnlocked],
+      health: this.playerHealth,
+      maxHealth: this.maxPlayerHealth
     });
   }
 
@@ -604,6 +619,14 @@ export class FPSController {
                 this.damageTarget(target, weapon);
             }
         });
+        const distToPlayer = this.camera.position.distanceTo(point);
+        if (distToPlayer <= weapon.explosionRadius) {
+            this.playerHealth = Math.max(0, this.playerHealth - weapon.damage * 0.5); // 50% damage to self
+            if (this.playerHealth <= 0 && this.isLocked) {
+                document.exitPointerLock();
+            }
+            this.updateStats();
+        }
     } else {
         if (directTarget) {
             this.damageTarget(directTarget, weapon);
@@ -616,7 +639,7 @@ export class FPSController {
     const delta = Math.min(this.clock.getDelta(), 0.1); // Cap delta to prevent huge jumps on lag
     this.animateId = requestAnimationFrame(this.animate);
 
-    if (this.isLocked) {
+    if (this.isLocked && this.playerHealth > 0) {
       // 1. Move Player (Horizontal)
       this.velocity.x -= this.velocity.x * 10.0 * delta;
       this.velocity.z -= this.velocity.z * 10.0 * delta;
@@ -786,6 +809,16 @@ export class FPSController {
         // Avoid bumping into player too closely
         if (distToPlayer > 3 || t.userData.state !== 'pursuit') {
             t.position.add(forward.multiplyScalar(moveSpeed * delta));
+        } else if (distToPlayer <= 3 && t.userData.state === 'pursuit') {
+            if (!t.userData.lastAttack || Date.now() - t.userData.lastAttack > 1000) {
+                t.userData.lastAttack = Date.now();
+                this.playerHealth = Math.max(0, this.playerHealth - 10);
+                sounds.playExplosion(0);
+                if (this.playerHealth <= 0 && this.isLocked) {
+                    document.exitPointerLock();
+                }
+                this.updateStats();
+            }
         }
         
         // Visuals

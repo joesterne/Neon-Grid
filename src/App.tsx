@@ -17,14 +17,31 @@ import AchievementsDisplay from './components/AchievementsDisplay';
 import LocalDemo from './components/LocalDemo';
 import SavedArenas from './components/SavedArenas';
 
+import SettingsPanel from './components/SettingsPanel';
+import { getSettings } from './lib/settings';
+import { sounds } from './lib/sounds';
+
 const AppContent = () => {
   const { user, profile, loading, isConfigured, isBypassed, bypassAuth } = useAuth();
-  const [view, setView] = useState<'menu' | 'lobby' | 'game' | 'editor' | 'story' | 'leaderboard' | 'fps' | 'tutorial' | 'saved'>('menu');
+  const [view, setView] = useState<'menu' | 'lobby' | 'game' | 'editor' | 'story' | 'leaderboard' | 'fps' | 'tutorial' | 'saved' | 'settings'>('menu');
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [sharedArenaId, setSharedArenaId] = useState<string | null>(null);
   const [quickLaunchMode, setQuickLaunchMode] = useState<'story' | 'lobby' | 'fps' | 'tutorial'>('tutorial');
   const [coreIntegrity, setCoreIntegrity] = useState(98.2);
   const [isTurboActive, setIsTurboActive] = useState(true);
+
+  // Global settings state
+  const [settings, setSettings] = useState(() => {
+    const s = getSettings();
+    sounds.setVolume(s.masterVolume);
+    return s;
+  });
+
+  React.useEffect(() => {
+    const handleUpdate = (e: any) => setSettings(e.detail);
+    window.addEventListener('settings-updated', handleUpdate);
+    return () => window.removeEventListener('settings-updated', handleUpdate);
+  }, []);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -156,10 +173,10 @@ const AppContent = () => {
         </div>
       )}
 
-      <div className="scanlines" />
+      {settings.scanlines && <div className="scanlines" />}
       
       {/* The Digital Grid Background */}
-      <div className="grid-background pointer-events-none opacity-40">
+      <div className={`grid-background pointer-events-none opacity-40 ${settings.gridGlow ? '' : 'no-glow'}`}>
         <div className="grid-floor" />
       </div>
       
@@ -299,6 +316,7 @@ const AppContent = () => {
               <NavButton active={view === 'editor'} label="Grid Editor" onClick={() => setView('editor')} />
               <NavButton active={view === 'saved'} label="Archived Arrays" onClick={() => setView('saved')} />
               <NavButton active={view === 'leaderboard'} label="Data Bank" onClick={() => setView('leaderboard')} />
+              <NavButton active={view === 'settings'} label="Settings" onClick={() => setView('settings')} />
             </nav>
 
             {/* Power-ups HUD (Bottom Right) */}
@@ -326,8 +344,8 @@ const AppContent = () => {
                     className="h-full w-full"
                   >
                     {view === 'menu' && (
-                      <div className="h-full flex flex-col justify-center">
-                        <div className="max-w-xl space-y-8">
+                      <div className="h-full flex flex-col overflow-y-auto custom-scrollbar pr-4">
+                        <div className="max-w-3xl space-y-8 py-8 w-full">
                           <div className="space-y-2">
                             <h2 className="text-5xl font-black italic tracking-tighter text-white uppercase italic">Welcome {profile?.displayName?.split(' ')[0] || 'Program'}</h2>
                             <p className="font-mono text-sm text-neon-blue/60 leading-relaxed uppercase tracking-widest">
@@ -421,6 +439,9 @@ const AppContent = () => {
                     {view === 'fps' && <FPSMode onBack={() => setView('menu')} initialObstacles={undefined} arenaId={sharedArenaId || undefined} />}
                     {view === 'tutorial' && <TutorialMode onBack={() => setView('menu')} />}
                     {view === 'saved' && <SavedArenas onBack={() => setView('menu')} onPlayArena={(id) => { setSharedArenaId(id); setView('fps'); }} />}
+                    {view === 'settings' && (
+                      <SettingsPanel />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>

@@ -671,6 +671,27 @@ const GameArena: React.FC<Props> = ({ roomId, onQuit }) => {
 
               return (
                 <Group key={p.uid}>
+                  {/* Energy Grid Trail Blocks */}
+                  {p.trail.map((pt, i) => {
+                    const blockOpacity = p.isAlive 
+                      ? Math.min(0.8, (i / p.trail.length) + 0.1) * glowPulse 
+                      : 0.1;
+                    return (
+                      <Rect
+                        key={`trail-block-${i}`}
+                        x={pt.x * GRID_SIZE + GRID_SIZE * 0.25}
+                        y={pt.y * GRID_SIZE + GRID_SIZE * 0.25}
+                        width={GRID_SIZE * 0.5}
+                        height={GRID_SIZE * 0.5}
+                        fill={p.color}
+                        opacity={blockOpacity}
+                        shadowColor={p.color}
+                        shadowBlur={15}
+                        cornerRadius={2}
+                      />
+                    );
+                  })}
+                  
                   {/* Glow Layer */}
                   <Line
                     points={[
