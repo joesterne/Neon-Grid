@@ -169,6 +169,12 @@ const AppContent = () => {
                 <li>Add all VITE_FIREBASE_* variables from your local config</li>
               </ol>
             </div>
+            <button 
+              onClick={loginSimulation}
+              className="mt-4 py-3 px-6 w-full border border-neon-blue/40 text-neon-blue hover:bg-neon-blue/10 transition-colors uppercase tracking-[2px] font-bold font-mono text-[10px]"
+            >
+              Bypass Authentication (Local Simulation) →
+            </button>
           </div>
         </div>
       )}
