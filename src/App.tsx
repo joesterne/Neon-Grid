@@ -454,7 +454,7 @@ const AppContent = () => {
 };
 
 const NavButton = ({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) => (
-  <button onClick={onClick} className={`menu-item-strike ${active ? 'active' : ''}`}>
+  <button onClick={onClick} className={`menu-item-strike hover:shadow-[0_0_15px_rgba(0,210,255,0.3)] ${active ? 'active shadow-[0_0_10px_rgba(0,210,255,0.2)]' : ''}`}>
     {label}
   </button>
 );
